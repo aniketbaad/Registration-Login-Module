@@ -4,6 +4,9 @@ var multer = require('multer');
 var router = express.Router();
 var upload = multer({dest:'./uploads'});
 
+var passport = require('passport');
+var LocalStrategy = require('passport-local').Strategy;
+
 var User = require('../model/model');
 /* GET users listing. */
 router.get('/', function(req, res, next) {
@@ -29,6 +32,7 @@ router.post('/register', upload.single('profileImage'),function(req, res, next){
   var username = req.body.username;
   var password = req.body.password;
   var password2 = req.body.password2;
+  console.log(name);
 
   if(req.file){
     console.log('File is Uploading..');
@@ -90,5 +94,51 @@ router.post('/register', upload.single('profileImage'),function(req, res, next){
   }
 });
 
+passport.serializeUser(function(user, done){
+  done(null, user.id);
+});
 
+passport.deserializeUser(function(id, done){
+  User.getUserById(id, function(err, user){
+    done(null, user);
+  });
+});
+
+
+passport.use(new LocalStrategy(
+  function(username, password, done){
+    User.getUserByUsername(username, function(err, user){
+      if(err) return done(err);
+      if(!user){
+        console.log('Unknown user');
+        return done(null, false, {message: 'Invalid User'});
+      }
+      User.comparePassword(password, user.password, function(err, isMatch){
+        if(err) return done(err);
+        if(isMatch){
+          console.log('Authentication Successfull');
+          return done(null, user);
+        }else{
+          console.log('Invalid Password');
+          return done(null, false, {message: 'Invalid Password'});
+        }
+      })
+    });
+  }
+));
+
+
+router.post('/login', passport.authenticate('local', {failureRidirect: '/users/login', failureFlash: 'Invalid Username or Password!'}),
+function(req, res){
+    console.log(req.body.username);
+    console.log('Authentication Successfull!!');
+    req.flash('sucess', 'You are logged in!');
+    res.redirect('/');
+  });
+
+router.get('/logout', function(req, res){
+  req.logout();
+  req.flash('success', 'You have Logged Out');
+  res.redirect('/users/login');
+})
 module.exports = router;

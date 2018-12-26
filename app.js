@@ -27,15 +27,20 @@ app.set('view engine', 'jade');
 //var upload = multer({dest:'./uploads'});
 
 app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+//app.use(express.json());
+//app.use(express.urlencoded({ extended: true }));
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: true}));
+
 
 //To handle Sessions
 app.use(session({
   secret: 'secret',
-  saveUninitialized: true,
+  saveUninitialized: false,
   resave: true
 }));
+
 
 //Passport used to authenticate the requests. Example: username from the form tag
 app.use(passport.initialize());
@@ -66,6 +71,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(flash());
 app.use(function(req, res, next){
   res.locals.messages = require('express-messages')(req, res);
+  next();
+});
+
+ //If we get access to user object: show only Member page and logout
+ //If we donot get the access: show Register and Login only
+ //Changes made in the layout.jade file
+app.get('*', function(req, res, next){
+  res.locals.user = req.user || null;
   next();
 });
 
@@ -100,6 +113,9 @@ mongoose.connect('mongodb://localhost:27017/nodeauth', {
 });
 
 module.exports = app;
+
+var apis = require('./routes/users.js')
+app.use('/', apis);
 
 
 app.get('/', (req, res) => {
